@@ -1,0 +1,69 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../core/theme/app_theme.dart';
+
+class RecyclerShell extends StatelessWidget {
+  final Widget child;
+  const RecyclerShell({super.key, required this.child});
+
+  static const _tabs = [
+    (label: 'Rutas', icon: Icons.route, route: '/recycler/routes'),
+    (label: 'Mapa', icon: Icons.map_outlined, route: '/recycler/map'),
+    (label: 'Perfil', icon: Icons.person_outline, route: '/recycler/profile'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final location = GoRouterState.of(context).matchedLocation;
+    final currentIndex =
+        _tabs.indexWhere((t) => t.route == location).clamp(0, _tabs.length - 1);
+    final isWide = MediaQuery.of(context).size.width >= 720;
+
+    if (isWide) {
+      return Scaffold(
+        body: Row(
+          children: [
+            NavigationRail(
+              selectedIndex: currentIndex,
+              onDestinationSelected: (i) => context.go(_tabs[i].route),
+              labelType: NavigationRailLabelType.all,
+              leading: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: AppColors.techOrange,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.recycling, color: Colors.white, size: 24),
+                ),
+              ),
+              destinations: _tabs
+                  .map((t) => NavigationRailDestination(
+                        icon: Icon(t.icon),
+                        label: Text(t.label),
+                      ))
+                  .toList(),
+            ),
+            const VerticalDivider(width: 1),
+            Expanded(child: child),
+          ],
+        ),
+      );
+    }
+
+    return Scaffold(
+      body: child,
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: currentIndex,
+        onDestinationSelected: (i) => context.go(_tabs[i].route),
+        indicatorColor: AppColors.techOrange.withValues(alpha: 0.2),
+        destinations: _tabs
+            .map((t) => NavigationDestination(icon: Icon(t.icon), label: t.label))
+            .toList(),
+      ),
+    );
+  }
+}

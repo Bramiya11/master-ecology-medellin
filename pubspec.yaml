@@ -1,0 +1,60 @@
+name: master_ecology
+description: Plataforma PWA para la gestión inteligente de residuos en Medellín.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State Management
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+
+  # Navigation
+  go_router: ^14.2.7
+
+  # Maps
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+
+  # UI / Theming
+  flex_color_scheme: ^8.0.2
+  google_fonts: ^6.2.1
+  material_symbols_icons: ^4.2719.3
+
+  # Utilities
+  uuid: ^4.4.0
+  intl: ^0.20.0
+  equatable: ^2.0.5
+
+  # Image picking (Web compatible)
+  image_picker: ^1.1.2
+  image_picker_for_web: ^3.0.4
+
+  # Geolocator (Web compatible)
+  geolocator: ^12.0.0
+
+  # Local Storage (fallback offline)
+  shared_preferences: ^2.3.2
+
+  # HTTP Client (future AWS integration)
+  dio: ^5.7.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  build_runner: ^2.4.12
+  riverpod_generator: ^2.4.3
+  custom_lint: ^0.7.6
+  riverpod_lint: ^2.6.3
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/screenshots/
+
