@@ -121,6 +121,161 @@ class MockService {
       reporterUserId: 'u-citizen-01',
       description: 'Ropa y textiles en buen estado para donación',
     ),
+
+    // ── Datos sintéticos demo ─ Belén ─────────────────────────────────────────
+    Report(
+      id: 'r-b01',
+      type: ReportType.criticalPoint,
+      material: WasteMaterial.plastic,
+      location: const ReportLocation(lat: 6.2342, lng: -75.5892, address: 'Belén, Calle 24'),
+      status: ReportStatus.pending,
+      timestamp: DateTime(2024, 11, 20, 6, 45),
+      reporterUserId: 'u-citizen-01',
+      description: 'Basura ordinaria acumulada en lote baldío',
+    ),
+    Report(
+      id: 'r-b02',
+      type: ReportType.collection,
+      material: WasteMaterial.metal,
+      location: const ReportLocation(lat: 6.2318, lng: -75.5846, address: 'Belén, Cra 76B'),
+      status: ReportStatus.onTheWay,
+      timestamp: DateTime(2024, 11, 20, 7, 20),
+      reporterUserId: 'u-citizen-01',
+      assignedRecyclerId: 'u-recycler-01',
+    ),
+    Report(
+      id: 'r-b03',
+      type: ReportType.criticalPoint,
+      material: WasteMaterial.organic,
+      location: const ReportLocation(lat: 6.2381, lng: -75.5921, address: 'Belén, Calle 28'),
+      status: ReportStatus.pending,
+      timestamp: DateTime(2024, 11, 20, 7, 50),
+      reporterUserId: 'u-citizen-01',
+      description: 'Residuos orgánicos expuestos, riesgo sanitario',
+    ),
+    Report(
+      id: 'r-b04',
+      type: ReportType.collection,
+      material: WasteMaterial.glass,
+      location: const ReportLocation(lat: 6.2295, lng: -75.5878, address: 'Belén, Cra 74A'),
+      status: ReportStatus.onTheWay,
+      timestamp: DateTime(2024, 11, 20, 8, 10),
+      reporterUserId: 'u-citizen-01',
+      assignedRecyclerId: 'u-recycler-01',
+    ),
+    Report(
+      id: 'r-b05',
+      type: ReportType.collection,
+      material: WasteMaterial.carton,
+      location: const ReportLocation(lat: 6.2362, lng: -75.5857, address: 'Belén, Calle 27A'),
+      status: ReportStatus.pending,
+      timestamp: DateTime(2024, 11, 20, 8, 30),
+      reporterUserId: 'u-citizen-01',
+      description: 'Cartón limpio de supermercado',
+    ),
+
+    // ── Datos sintéticos demo ─ Aranjuez ──────────────────────────────────────
+    Report(
+      id: 'r-a01',
+      type: ReportType.criticalPoint,
+      material: WasteMaterial.plastic,
+      location: const ReportLocation(lat: 6.2753, lng: -75.5619, address: 'Aranjuez, Calle 93'),
+      status: ReportStatus.pending,
+      timestamp: DateTime(2024, 11, 20, 6, 30),
+      reporterUserId: 'u-citizen-01',
+      description: 'Basura ordinaria acumulada, requiere atención urgente',
+    ),
+    Report(
+      id: 'r-a02',
+      type: ReportType.collection,
+      material: WasteMaterial.textile,
+      location: const ReportLocation(lat: 6.2728, lng: -75.5643, address: 'Aranjuez, Cra 49'),
+      status: ReportStatus.onTheWay,
+      timestamp: DateTime(2024, 11, 20, 7, 15),
+      reporterUserId: 'u-citizen-01',
+      assignedRecyclerId: 'u-recycler-01',
+    ),
+    Report(
+      id: 'r-a03',
+      type: ReportType.criticalPoint,
+      material: WasteMaterial.organic,
+      location: const ReportLocation(lat: 6.2789, lng: -75.5598, address: 'Aranjuez, Calle 95'),
+      status: ReportStatus.pending,
+      timestamp: DateTime(2024, 11, 20, 7, 45),
+      reporterUserId: 'u-citizen-01',
+      description: 'Punto negro de basura en espacio público',
+    ),
+    Report(
+      id: 'r-a04',
+      type: ReportType.collection,
+      material: WasteMaterial.metal,
+      location: const ReportLocation(lat: 6.2712, lng: -75.5661, address: 'Aranjuez, Cra 51'),
+      status: ReportStatus.pending,
+      timestamp: DateTime(2024, 11, 20, 9, 0),
+      reporterUserId: 'u-citizen-01',
+    ),
+    Report(
+      id: 'r-a05',
+      type: ReportType.collection,
+      material: WasteMaterial.glass,
+      location: const ReportLocation(lat: 6.2771, lng: -75.5623, address: 'Aranjuez, Calle 90'),
+      status: ReportStatus.onTheWay,
+      timestamp: DateTime(2024, 11, 20, 10, 30),
+      reporterUserId: 'u-citizen-01',
+      assignedRecyclerId: 'u-recycler-01',
+    ),
+
+    // ── Datos sintéticos demo ─ El Poblado ────────────────────────────────────
+    Report(
+      id: 'r-p01',
+      type: ReportType.criticalPoint,
+      material: WasteMaterial.plastic,
+      location: const ReportLocation(lat: 6.2112, lng: -75.5664, address: 'El Poblado, Cra 43A'),
+      status: ReportStatus.pending,
+      timestamp: DateTime(2024, 11, 20, 6, 0),
+      reporterUserId: 'u-citizen-01',
+      description: 'Basura ordinaria acumulada frente a parque',
+    ),
+    Report(
+      id: 'r-p02',
+      type: ReportType.collection,
+      material: WasteMaterial.glass,
+      location: const ReportLocation(lat: 6.2145, lng: -75.5641, address: 'El Poblado, Calle 16'),
+      status: ReportStatus.onTheWay,
+      timestamp: DateTime(2024, 11, 20, 7, 0),
+      reporterUserId: 'u-citizen-01',
+      assignedRecyclerId: 'u-recycler-01',
+    ),
+    Report(
+      id: 'r-p03',
+      type: ReportType.criticalPoint,
+      material: WasteMaterial.metal,
+      location: const ReportLocation(lat: 6.2091, lng: -75.5683, address: 'El Poblado, Cra 42'),
+      status: ReportStatus.pending,
+      timestamp: DateTime(2024, 11, 20, 8, 0),
+      reporterUserId: 'u-citizen-01',
+      description: 'Chatarra y residuos metálicos en vía pública',
+    ),
+    Report(
+      id: 'r-p04',
+      type: ReportType.collection,
+      material: WasteMaterial.carton,
+      location: const ReportLocation(lat: 6.2168, lng: -75.5622, address: 'El Poblado, Calle 10A'),
+      status: ReportStatus.onTheWay,
+      timestamp: DateTime(2024, 11, 20, 9, 30),
+      reporterUserId: 'u-citizen-01',
+      assignedRecyclerId: 'u-recycler-01',
+    ),
+    Report(
+      id: 'r-p05',
+      type: ReportType.collection,
+      material: WasteMaterial.electronic,
+      location: const ReportLocation(lat: 6.2134, lng: -75.5658, address: 'El Poblado, Cra 43'),
+      status: ReportStatus.pending,
+      timestamp: DateTime(2024, 11, 20, 11, 0),
+      reporterUserId: 'u-citizen-01',
+      description: 'Electrodomésticos obsoletos para reciclar',
+    ),
   ];
 
   // ── Auth simulation ──────────────────────────────────────────────────────────
@@ -206,13 +361,19 @@ class MockService {
   Future<ImpactMetrics> fetchImpactMetrics() async {
     await Future.delayed(_kFakeDelay);
     final completed = _reports.where((r) => r.isCompleted).length;
+    final criticalPending = _reports
+        .where((r) => r.type == ReportType.criticalPoint && r.isPending)
+        .length;
     return ImpactMetrics(
       totalReports: _reports.length,
       completedReports: completed,
-      // Each completed report = ~12kg diverted on average
+      // Each completed report ≈ 12 kg diverted
       tonnesDeviated: (completed * 12) / 1000,
-      // CO2 savings: ~2.5kg CO2 per kg of recycled material
+      // CO2: 2.5 kg CO2 per kg of recycled material
       co2SavedKg: completed * 12 * 2.5,
+      // 15 min (0.25 hr) of optimized route per completed nearby report
+      routeHoursOptimized: completed * 0.25,
+      criticalPointsPending: criticalPending,
       reportsByMaterial: _computeByMaterial(),
       reportsByStatus: _computeByStatus(),
     );
@@ -252,6 +413,8 @@ class ImpactMetrics {
   final int completedReports;
   final double tonnesDeviated;
   final double co2SavedKg;
+  final double routeHoursOptimized;
+  final int criticalPointsPending;
   final Map<String, int> reportsByMaterial;
   final Map<String, int> reportsByStatus;
 
@@ -260,6 +423,8 @@ class ImpactMetrics {
     required this.completedReports,
     required this.tonnesDeviated,
     required this.co2SavedKg,
+    required this.routeHoursOptimized,
+    required this.criticalPointsPending,
     required this.reportsByMaterial,
     required this.reportsByStatus,
   });

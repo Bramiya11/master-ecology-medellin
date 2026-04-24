@@ -87,6 +87,21 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               right: 16,
               child: CircularProgressIndicator(),
             ),
+
+          // Critical points alert badge
+          Builder(builder: (context) {
+            final criticalCount = reportsAsync.valueOrNull
+                    ?.where((r) =>
+                        r.type == ReportType.criticalPoint && r.isPending)
+                    .length ??
+                0;
+            if (criticalCount == 0) return const SizedBox.shrink();
+            return Positioned(
+              top: MediaQuery.of(context).padding.top + 64,
+              right: 12,
+              child: _CriticalAlertBadge(count: criticalCount),
+            );
+          }),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -103,6 +118,19 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final color = AppColors.materialColors[report.material] ??
         AppColors.forestGreen;
     final isSelected = _selectedReport?.id == report.id;
+
+    if (report.type == ReportType.criticalPoint) {
+      return Marker(
+        point: report.location.toLatLng(),
+        // Extra bounds to avoid clipping during scale animation
+        width: isSelected ? 56 : 44,
+        height: isSelected ? 56 : 44,
+        child: _PulsingCriticalMarker(
+          isSelected: isSelected,
+          onTap: () => setState(() => _selectedReport = report),
+        ),
+      );
+    }
 
     return Marker(
       point: report.location.toLatLng(),
@@ -128,9 +156,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ],
           ),
           child: Icon(
-            report.type == ReportType.criticalPoint
-                ? Icons.warning_amber
-                : Icons.recycling,
+            Icons.recycling,
             color: Colors.white,
             size: isSelected ? 26 : 20,
           ),
@@ -296,6 +322,137 @@ class _ReportCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Pulsing marker for critical points ───────────────────────────────────────
+
+class _PulsingCriticalMarker extends StatefulWidget {
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _PulsingCriticalMarker({required this.isSelected, required this.onTap});
+
+  @override
+  State<_PulsingCriticalMarker> createState() => _PulsingCriticalMarkerState();
+}
+
+class _PulsingCriticalMarkerState extends State<_PulsingCriticalMarker>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+    _scale = Tween<double>(begin: 0.85, end: 1.15).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = widget.isSelected ? 40.0 : 30.0;
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: AnimatedBuilder(
+        animation: _scale,
+        builder: (_, child) => Transform.scale(scale: _scale.value, child: child),
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: Colors.red.shade700,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: widget.isSelected ? Colors.white : Colors.orange.shade300,
+              width: 2.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.red.withValues(alpha: 0.55),
+                blurRadius: widget.isSelected ? 14 : 8,
+                spreadRadius: widget.isSelected ? 3 : 1,
+              ),
+            ],
+          ),
+          child: Icon(
+            Icons.warning_amber,
+            color: Colors.white,
+            size: widget.isSelected ? 22 : 16,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Floating badge that suggests alerting the waste company ──────────────────
+
+class _CriticalAlertBadge extends StatelessWidget {
+  final int count;
+  const _CriticalAlertBadge({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    final label = '$count crítico${count > 1 ? 's' : ''}';
+    return GestureDetector(
+      onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '$count punto${count > 1 ? 's' : ''} crítico${count > 1 ? 's' : ''} '
+            'detectado${count > 1 ? 's' : ''}. '
+            'Alertando a empresa de aseo...',
+          ),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(
+            label: 'OK',
+            textColor: Colors.white,
+            onPressed: () {},
+          ),
+        ),
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.red.shade700,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.red.withValues(alpha: 0.4),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.warning_amber, color: Colors.white, size: 15),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ],
         ),
       ),

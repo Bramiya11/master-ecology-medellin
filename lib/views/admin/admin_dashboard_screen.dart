@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/metrics_provider.dart';
+import '../../providers/reports_provider.dart';
 
 class AdminDashboardScreen extends ConsumerWidget {
   const AdminDashboardScreen({super.key});
@@ -26,6 +28,11 @@ class AdminDashboardScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Critical points alert
+                if (metrics.criticalPointsPending > 0) ...[
+                  _CriticalPointsAlert(count: metrics.criticalPointsPending),
+                  const SizedBox(height: 16),
+                ],
                 Text('Resumen General',
                     style: theme.textTheme.titleLarge
                         ?.copyWith(fontWeight: FontWeight.bold)),
@@ -121,6 +128,16 @@ class AdminDashboardScreen extends ConsumerWidget {
                           ]),
                         ],
                       ),
+
+                const SizedBox(height: 16),
+                _RouteHoursCard(hours: metrics.routeHoursOptimized),
+
+                const SizedBox(height: 28),
+                Text('Filtrar mapa por material',
+                    style: theme.textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 12),
+                const _MaterialFilterBar(),
 
                 const SizedBox(height: 28),
                 Text('Reportes por Material',
@@ -327,6 +344,175 @@ class _StatusBreakdown extends StatelessWidget {
           ),
         );
       }).toList(),
+    );
+  }
+}
+
+// ── Critical points alert card ───────────────────────────────────────────────
+
+class _CriticalPointsAlert extends StatelessWidget {
+  final int count;
+  const _CriticalPointsAlert({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    final plural = count > 1;
+    return Card(
+      color: Colors.red.shade50,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.red.shade300, width: 1.5),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded,
+                color: Colors.red.shade700, size: 28),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$count Punto${plural ? 's' : ''} Crítico${plural ? 's' : ''} sin atender',
+                    style: TextStyle(
+                      color: Colors.red.shade800,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Se recomienda alertar a la empresa de aseo.',
+                    style: TextStyle(color: Colors.red.shade600, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.red.shade700,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('Alerta enviada a empresa de aseo ✓'),
+                  backgroundColor: Colors.red.shade700,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              ),
+              icon: const Icon(Icons.send, size: 14),
+              label: const Text('Alertar', style: TextStyle(fontSize: 12)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Route hours KPI card ─────────────────────────────────────────────────────
+
+class _RouteHoursCard extends StatelessWidget {
+  final double hours;
+  const _RouteHoursCard({required this.hours});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: AppColors.forestGreen.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.route,
+                  color: AppColors.forestGreen, size: 26),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${hours.toStringAsFixed(1)} horas optimizadas',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.forestGreen,
+                    ),
+                  ),
+                  const Text(
+                    'Rutas de recicladores dignificadas · 15 min/reporte',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Material quick-filter bar (affects the map in real time via filterProvider)
+
+class _MaterialFilterBar extends ConsumerWidget {
+  const _MaterialFilterBar();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final filter = ref.watch(filterProvider);
+    final notifier = ref.read(filterProvider.notifier);
+
+    const quickMaterials = [
+      WasteMaterial.plastic,
+      WasteMaterial.metal,
+      WasteMaterial.glass,
+    ];
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        ActionChip(
+          avatar: Icon(Icons.layers_clear,
+              size: 16,
+              color: filter.materials.isEmpty
+                  ? AppColors.forestGreen
+                  : Colors.grey),
+          label: const Text('Todos'),
+          backgroundColor: filter.materials.isEmpty
+              ? AppColors.forestGreen.withValues(alpha: 0.12)
+              : null,
+          onPressed: notifier.clearAll,
+        ),
+        ...quickMaterials.map((m) {
+          final color =
+              AppColors.materialColors[m] ?? AppColors.forestGreen;
+          final active = filter.materials.contains(m);
+          return FilterChip(
+            label: Text(m),
+            selected: active,
+            selectedColor: color.withValues(alpha: 0.18),
+            checkmarkColor: color,
+            labelStyle: TextStyle(
+              color: active ? color : null,
+              fontWeight: active ? FontWeight.w600 : null,
+            ),
+            onSelected: (_) => notifier.toggleMaterial(m),
+          );
+        }),
+      ],
     );
   }
 }
