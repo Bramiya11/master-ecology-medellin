@@ -82,10 +82,96 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
           // Loading overlay
           if (reportsAsync.isLoading)
-            const Positioned(
-              top: 80,
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.06),
+                  ),
+                  child: Center(
+                    child: Card(
+                      elevation: 6,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 16),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2),
+                            ),
+                            SizedBox(width: 12),
+                            Text('Cargando reportes...'),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // Error state
+          if (reportsAsync.hasError)
+            Positioned(
+              bottom: 80,
+              left: 16,
               right: 16,
-              child: CircularProgressIndicator(),
+              child: Card(
+                color: Colors.red.shade50,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      Icon(Icons.wifi_off, color: Colors.red.shade700),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                          child: Text(
+                              'No se pudieron cargar los reportes.')),
+                      TextButton(
+                        onPressed: () => ref.invalidate(reportsProvider),
+                        child: const Text('Reintentar'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+          // Empty filtered state
+          if (reportsAsync.valueOrNull?.isEmpty == true)
+            Positioned(
+              bottom: 80,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Card(
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.search_off,
+                            color: Colors.grey.shade500),
+                        const SizedBox(width: 8),
+                        const Text('Sin reportes con este filtro'),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ),
 
           // Critical points alert badge

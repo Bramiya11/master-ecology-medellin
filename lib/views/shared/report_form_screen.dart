@@ -92,9 +92,24 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
           );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('¡Reporte enviado exitosamente!'),
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.eco, color: Colors.white),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    '¡Gracias por contribuir a Medellín!',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
             backgroundColor: AppColors.completed,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)),
+            duration: const Duration(seconds: 3),
           ),
         );
         context.pop();

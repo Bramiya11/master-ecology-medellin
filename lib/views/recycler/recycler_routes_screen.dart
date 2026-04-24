@@ -241,9 +241,34 @@ class _RouteCard extends StatelessWidget {
                     child: FilledButton.icon(
                       style: FilledButton.styleFrom(
                           backgroundColor: AppColors.completed),
-                      onPressed: () => ref
-                          .read(reportsNotifierProvider.notifier)
-                          .updateStatus(report.id, ReportStatus.completed),
+                      onPressed: () async {
+                        await ref
+                            .read(reportsNotifierProvider.notifier)
+                            .updateStatus(report.id, ReportStatus.completed);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Row(
+                                children: [
+                                  Icon(Icons.recycling, color: Colors.white),
+                                  SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      '¡Ruta completada! Gracias por tu labor.',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.w600),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              backgroundColor: AppColors.completed,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                            ),
+                          );
+                        }
+                      },
                       icon: const Icon(Icons.check, size: 18),
                       label: const Text('Marcar completado'),
                     ),

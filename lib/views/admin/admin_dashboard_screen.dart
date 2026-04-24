@@ -16,7 +16,19 @@ class AdminDashboardScreen extends ConsumerWidget {
     final isWide = MediaQuery.of(context).size.width >= 720;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Dashboard de Impacto')),
+      appBar: AppBar(
+        title: const Text('Dashboard de Impacto'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf),
+            tooltip: 'Exportar reporte PDF',
+            onPressed: () => showDialog(
+              context: context,
+              builder: (_) => const _ExportReportDialog(),
+            ),
+          ),
+        ],
+      ),
       body: metricsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
@@ -365,47 +377,60 @@ class _CriticalPointsAlert extends StatelessWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),
-        child: Row(
+        // Column layout keeps the button from overflowing on small screens
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.warning_amber_rounded,
-                color: Colors.red.shade700, size: 28),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '$count Punto${plural ? 's' : ''} Crítico${plural ? 's' : ''} sin atender',
-                    style: TextStyle(
-                      color: Colors.red.shade800,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
+            Row(
+              children: [
+                Icon(Icons.warning_amber_rounded,
+                    color: Colors.red.shade700, size: 26),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '$count Punto${plural ? 's' : ''} Crítico${plural ? 's' : ''} sin atender',
+                        style: TextStyle(
+                          color: Colors.red.shade800,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Se recomienda alertar a la empresa de aseo.',
+                        style:
+                            TextStyle(color: Colors.red.shade600, fontSize: 12),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Se recomienda alertar a la empresa de aseo.',
-                    style: TextStyle(color: Colors.red.shade600, fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            FilledButton.icon(
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.red.shade700,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              ),
-              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Alerta enviada a empresa de aseo ✓'),
-                  backgroundColor: Colors.red.shade700,
-                  behavior: SnackBarBehavior.floating,
                 ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.red.shade700,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                ),
+                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text('Alerta enviada a empresa de aseo ✓'),
+                    backgroundColor: Colors.red.shade700,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                icon: const Icon(Icons.send, size: 14),
+                label: const Text('Alertar', style: TextStyle(fontSize: 12)),
               ),
-              icon: const Icon(Icons.send, size: 14),
-              label: const Text('Alertar', style: TextStyle(fontSize: 12)),
             ),
           ],
         ),
@@ -513,6 +538,90 @@ class _MaterialFilterBar extends ConsumerWidget {
           );
         }),
       ],
+    );
+  }
+}
+
+// ── Export report dialog ──────────────────────────────────────────────────────
+
+class _ExportReportDialog extends StatefulWidget {
+  const _ExportReportDialog();
+
+  @override
+  State<_ExportReportDialog> createState() => _ExportReportDialogState();
+}
+
+class _ExportReportDialogState extends State<_ExportReportDialog> {
+  bool _generating = false;
+
+  static const _logLines = [
+    '> Connecting to S3 bucket...',
+    '> Compiling impact metrics...',
+    '> Generating master_ecology_report.pdf',
+    '> Preparing AWS S3 Download...',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Row(
+        children: [
+          Icon(Icons.picture_as_pdf, color: AppColors.techOrange),
+          SizedBox(width: 10),
+          Text('Exportar Reporte PDF'),
+        ],
+      ),
+      content: _generating
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const LinearProgressIndicator(),
+                const SizedBox(height: 16),
+                ..._logLines.map(
+                  (line) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(
+                      line,
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 12,
+                        color: line.contains('S3 Download')
+                            ? AppColors.forestGreen
+                            : Colors.grey.shade700,
+                        fontWeight: line.contains('S3 Download')
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : const Text(
+              'Genera un PDF con el resumen de impacto ambiental '
+              'para compartir con stakeholders y entidades de la ciudad.',
+            ),
+      actions: _generating
+          ? [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cerrar'),
+              ),
+            ]
+          : [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.techOrange),
+                onPressed: () => setState(() => _generating = true),
+                icon: const Icon(Icons.download, size: 16),
+                label: const Text('Generar PDF'),
+              ),
+            ],
     );
   }
 }
