@@ -41,8 +41,18 @@ dependencies:
   # Local Storage (fallback offline)
   shared_preferences: ^2.3.2
 
-  # HTTP Client (future AWS integration)
+  # HTTP Client
   dio: ^5.7.0
+
+  # PDF generation & cross-platform share/download
+  pdf: ^3.10.8
+  printing: ^5.13.1
+
+  # AWS Amplify
+  amplify_flutter: ^2.5.0
+  amplify_api: ^2.5.0
+  amplify_storage_s3: ^2.5.0
+  amplify_auth_cognito: ^2.5.0
 
 dev_dependencies:
   flutter_test:

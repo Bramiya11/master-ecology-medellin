@@ -1,9 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../amplifyconfiguration.dart';
 import '../models/report_model.dart';
+import '../services/amplify_service.dart';
 import '../services/mock_service.dart';
 
-// ── Filter state ─────────────────────────────────────────────────────────────
+// ── Helper ────────────────────────────────────────────────────────────────────
+
+Future<List<Report>> _fetchReports() => kAmplifyConfigured
+    ? AmplifyService.instance.fetchReports()
+    : MockService.instance.fetchReports();
+
+// ── Filter state ──────────────────────────────────────────────────────────────
 
 class ReportFilter {
   final Set<String> types;
@@ -69,12 +77,9 @@ final filterProvider = StateNotifierProvider<FilterNotifier, ReportFilter>(
 
 // ── Reports async ─────────────────────────────────────────────────────────────
 
-final reportsProvider = FutureProvider<List<Report>>((ref) async {
-  return MockService.instance.fetchReports();
-});
-
+// Una única fuente de verdad: el mapa, admin y reciclador leen todos de aquí.
 final filteredReportsProvider = Provider<AsyncValue<List<Report>>>((ref) {
-  final reportsAsync = ref.watch(reportsProvider);
+  final reportsAsync = ref.watch(reportsNotifierProvider);
   final filter = ref.watch(filterProvider);
 
   return reportsAsync.whenData(
@@ -94,8 +99,7 @@ class ReportsNotifier extends StateNotifier<AsyncValue<List<Report>>> {
   Future<void> _load() async {
     state = const AsyncValue.loading();
     try {
-      final data = await MockService.instance.fetchReports();
-      state = AsyncValue.data(data);
+      state = AsyncValue.data(await _fetchReports());
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
@@ -109,16 +113,30 @@ class ReportsNotifier extends StateNotifier<AsyncValue<List<Report>>> {
     required ReportLocation location,
     String? photoUrl,
     String? description,
+    String? aiSeverity,
+    String? aiRecommendation,
   }) async {
     final prev = state;
     try {
-      final newReport = await MockService.instance.createReport(
-        type: type,
-        material: material,
-        location: location,
-        photoUrl: photoUrl,
-        description: description,
-      );
+      final newReport = kAmplifyConfigured
+          ? await AmplifyService.instance.createReport(
+              type: type,
+              material: material,
+              location: location,
+              photoUrl: photoUrl,
+              description: description,
+              aiSeverity: aiSeverity,
+              aiRecommendation: aiRecommendation,
+            )
+          : await MockService.instance.createReport(
+              type: type,
+              material: material,
+              location: location,
+              photoUrl: photoUrl,
+              description: description,
+              aiSeverity: aiSeverity,
+              aiRecommendation: aiRecommendation,
+            );
       state = prev.whenData((list) => [newReport, ...list]);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -126,14 +144,18 @@ class ReportsNotifier extends StateNotifier<AsyncValue<List<Report>>> {
   }
 
   Future<void> updateStatus(String reportId, String newStatus) async {
-    final updated = await MockService.instance.updateReportStatus(reportId, newStatus);
+    final updated = kAmplifyConfigured
+        ? await AmplifyService.instance.updateReportStatus(reportId, newStatus)
+        : await MockService.instance.updateReportStatus(reportId, newStatus);
     state = state.whenData(
       (list) => list.map((r) => r.id == reportId ? updated : r).toList(),
     );
   }
 
   Future<void> assignRecycler(String reportId, String recyclerId) async {
-    final updated = await MockService.instance.assignRecycler(reportId, recyclerId);
+    final updated = kAmplifyConfigured
+        ? await AmplifyService.instance.assignRecycler(reportId, recyclerId)
+        : await MockService.instance.assignRecycler(reportId, recyclerId);
     state = state.whenData(
       (list) => list.map((r) => r.id == reportId ? updated : r).toList(),
     );

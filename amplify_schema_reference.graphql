@@ -1,0 +1,33 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# INSTRUCCIONES:
+# 1. Corre: amplify add api
+# 2. Elige GraphQL, autenticación API key
+# 3. Cuando pregunte "Do you want to edit the schema now?" → Yes
+# 4. Reemplaza el contenido del archivo con este schema
+# 5. Guarda y cierra → Amplify termina la configuración
+# 6. Corre: amplify push --yes
+# ─────────────────────────────────────────────────────────────────────────────
+
+type Report @model @auth(rules: [{ allow: public }]) {
+  id: ID!
+  type: String!
+  material: String!
+  lat: Float!
+  lng: Float!
+  address: String
+  photoUrl: String
+  status: String!
+  timestamp: AWSDateTime!
+  reporterUserId: String!
+  description: String
+  assignedRecyclerId: String
+}
+
+type AppUser @model @auth(rules: [{ allow: public }]) {
+  id: ID!
+  name: String!
+  email: String!
+  role: String!
+  avatarUrl: String
+  createdAt: AWSDateTime!
+}

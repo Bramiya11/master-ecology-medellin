@@ -1,12 +1,18 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:uuid/uuid.dart';
 
+import '../../amplifyconfiguration.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/report_model.dart';
 import '../../providers/reports_provider.dart';
+import '../../services/amplify_service.dart';
 
 class ReportFormScreen extends ConsumerStatefulWidget {
   const ReportFormScreen({super.key});
@@ -25,6 +31,14 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
   ReportLocation? _location;
   bool _locating = false;
   bool _submitting = false;
+
+  // Photo + AI analysis state
+  Uint8List? _photoBytes;
+  String? _photoS3Key;
+  bool _uploadingPhoto = false;
+  bool _aiAnalyzing = false;
+  String? _aiSeverity;
+  String? _aiRecommendation;
 
   @override
   void dispose() {
@@ -71,6 +85,60 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
         ));
   }
 
+  Future<void> _pickAndAnalyzePhoto() async {
+    final xFile = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1200,
+      imageQuality: 85,
+    );
+    if (xFile == null) return;
+
+    final bytes = await xFile.readAsBytes();
+    setState(() {
+      _photoBytes = bytes;
+      _photoS3Key = null;
+      _uploadingPhoto = true;
+      _aiSeverity = null;
+      _aiRecommendation = null;
+    });
+
+    try {
+      if (kAmplifyConfigured) {
+        final filename = '${const Uuid().v4()}.jpg';
+        final s3Key = await AmplifyService.instance.uploadPhoto(bytes, filename);
+        setState(() {
+          _photoS3Key = s3Key;
+          _uploadingPhoto = false;
+          _aiAnalyzing = true;
+        });
+        final result = await AmplifyService.instance.analyzePhoto(s3Key);
+        setState(() {
+          _aiSeverity = result.severity;
+          _aiRecommendation = result.recommendation;
+          _aiAnalyzing = false;
+        });
+      } else {
+        await Future<void>.delayed(const Duration(seconds: 2));
+        setState(() {
+          _uploadingPhoto = false;
+          _aiAnalyzing = false;
+          _aiSeverity = 'MODERADO';
+          _aiRecommendation = 'Clasificar y depositar en punto verde';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _uploadingPhoto = false;
+        _aiAnalyzing = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al analizar foto: $e')),
+        );
+      }
+    }
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_location == null) {
@@ -89,6 +157,9 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
             description: _descriptionController.text.trim().isEmpty
                 ? null
                 : _descriptionController.text.trim(),
+            photoUrl: _photoS3Key,
+            aiSeverity: _aiSeverity,
+            aiRecommendation: _aiRecommendation,
           );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -123,6 +194,131 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
+  }
+
+  Widget _buildPhotoSection(ThemeData theme) {
+    if (_photoBytes == null) {
+      return OutlinedButton.icon(
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(double.infinity, 52),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          side: BorderSide(color: Colors.grey.shade300),
+        ),
+        onPressed: _pickAndAnalyzePhoto,
+        icon: const Icon(Icons.add_a_photo_outlined),
+        label: const Text('Agregar foto del punto de residuos'),
+      );
+    }
+
+    final severityColor = switch (_aiSeverity) {
+      'CRÍTICO' => Colors.red.shade700,
+      'MODERADO' => Colors.orange.shade700,
+      _ => AppColors.forestGreen,
+    };
+    final severityIcon = switch (_aiSeverity) {
+      'CRÍTICO' => Icons.warning_amber_rounded,
+      'MODERADO' => Icons.info_outline,
+      _ => Icons.check_circle_outline,
+    };
+
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      clipBehavior: Clip.hardEdge,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            height: 160,
+            child: Image.memory(_photoBytes!, fit: BoxFit.cover),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (_uploadingPhoto)
+                  const Row(children: [
+                    SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    SizedBox(width: 8),
+                    Text('Subiendo foto a S3…',
+                        style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  ])
+                else if (_aiAnalyzing)
+                  Row(children: [
+                    SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.techOrange,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text('Analizando con Rekognition + Bedrock…',
+                        style: TextStyle(
+                            fontSize: 12, color: Colors.orange.shade700)),
+                  ])
+                else if (_aiSeverity != null)
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: severityColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                              color: severityColor.withValues(alpha: 0.4)),
+                        ),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(severityIcon, size: 14, color: severityColor),
+                          const SizedBox(width: 5),
+                          Text(
+                            _aiSeverity!,
+                            style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: severityColor),
+                          ),
+                        ]),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _aiRecommendation ?? '',
+                          style: TextStyle(
+                              fontSize: 11, color: Colors.grey.shade700),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                const SizedBox(height: 6),
+                TextButton.icon(
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  onPressed: (_uploadingPhoto || _aiAnalyzing)
+                      ? null
+                      : _pickAndAnalyzePhoto,
+                  icon: const Icon(Icons.refresh, size: 14),
+                  label: const Text('Cambiar foto',
+                      style: TextStyle(fontSize: 12)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -193,6 +389,14 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
                     border: OutlineInputBorder(),
                   ),
                 ),
+                const SizedBox(height: 20),
+
+                // Photo + AI analysis section
+                Text('Foto (opcional — análisis IA)',
+                    style: theme.textTheme.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                _buildPhotoSection(theme),
                 const SizedBox(height: 28),
 
                 SizedBox(

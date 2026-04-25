@@ -43,6 +43,8 @@ class Report extends Equatable {
   final String reporterUserId;
   final String? description;
   final String? assignedRecyclerId;
+  final String? aiSeverity;
+  final String? aiRecommendation;
 
   const Report({
     required this.id,
@@ -55,6 +57,8 @@ class Report extends Equatable {
     required this.reporterUserId,
     this.description,
     this.assignedRecyclerId,
+    this.aiSeverity,
+    this.aiRecommendation,
   });
 
   bool get isPending => status == ReportStatus.pending;
@@ -72,6 +76,8 @@ class Report extends Equatable {
     String? reporterUserId,
     String? description,
     String? assignedRecyclerId,
+    String? aiSeverity,
+    String? aiRecommendation,
   }) {
     return Report(
       id: id ?? this.id,
@@ -84,6 +90,8 @@ class Report extends Equatable {
       reporterUserId: reporterUserId ?? this.reporterUserId,
       description: description ?? this.description,
       assignedRecyclerId: assignedRecyclerId ?? this.assignedRecyclerId,
+      aiSeverity: aiSeverity ?? this.aiSeverity,
+      aiRecommendation: aiRecommendation ?? this.aiRecommendation,
     );
   }
 
@@ -98,6 +106,8 @@ class Report extends Equatable {
         reporterUserId: json['reporterUserId'] as String,
         description: json['description'] as String?,
         assignedRecyclerId: json['assignedRecyclerId'] as String?,
+        aiSeverity: json['aiSeverity'] as String?,
+        aiRecommendation: json['aiRecommendation'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -111,6 +121,8 @@ class Report extends Equatable {
         'reporterUserId': reporterUserId,
         if (description != null) 'description': description,
         if (assignedRecyclerId != null) 'assignedRecyclerId': assignedRecyclerId,
+        if (aiSeverity != null) 'aiSeverity': aiSeverity,
+        if (aiRecommendation != null) 'aiRecommendation': aiRecommendation,
       };
 
   @override
@@ -125,5 +137,7 @@ class Report extends Equatable {
         reporterUserId,
         description,
         assignedRecyclerId,
+        aiSeverity,
+        aiRecommendation,
       ];
 }

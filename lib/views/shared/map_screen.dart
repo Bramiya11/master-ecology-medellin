@@ -137,7 +137,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           child: Text(
                               'No se pudieron cargar los reportes.')),
                       TextButton(
-                        onPressed: () => ref.invalidate(reportsProvider),
+                        onPressed: () => ref
+                            .read(reportsNotifierProvider.notifier)
+                            .refresh(),
                         child: const Text('Reintentar'),
                       ),
                     ],
@@ -408,8 +410,66 @@ class _ReportCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ],
+            if (report.aiSeverity != null) ...[
+              const SizedBox(height: 10),
+              _AiSeverityBadge(
+                severity: report.aiSeverity!,
+                recommendation: report.aiRecommendation,
+              ),
+            ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AiSeverityBadge extends StatelessWidget {
+  final String severity;
+  final String? recommendation;
+
+  const _AiSeverityBadge({required this.severity, this.recommendation});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = switch (severity) {
+      'CRÍTICO' => Colors.red.shade700,
+      'MODERADO' => Colors.orange.shade700,
+      _ => Colors.green.shade700,
+    };
+    final icon = switch (severity) {
+      'CRÍTICO' => Icons.warning_amber_rounded,
+      'MODERADO' => Icons.info_outline,
+      _ => Icons.check_circle_outline,
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 15, color: color),
+          const SizedBox(width: 6),
+          Text(
+            'IA · $severity',
+            style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.bold, color: color),
+          ),
+          if (recommendation != null) ...[
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                recommendation!,
+                style: TextStyle(fontSize: 10, color: Colors.grey.shade700),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

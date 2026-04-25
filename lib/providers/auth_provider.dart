@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../amplifyconfiguration.dart';
 import '../models/user_model.dart';
+import '../services/amplify_service.dart';
 import '../services/mock_service.dart';
 
 class AuthState {
@@ -32,7 +34,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> loginAsRole(String role) async {
     state = state.copyWith(isLoading: true);
     try {
-      final user = await MockService.instance.loginAsRole(role);
+      final user = kAmplifyConfigured
+          ? await AmplifyService.instance.loginAsRole(role)
+          : await MockService.instance.loginAsRole(role);
       state = AuthState(user: user);
     } catch (e) {
       state = AuthState(error: e.toString());
@@ -40,7 +44,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
-    await MockService.instance.logout();
+    if (kAmplifyConfigured) {
+      await AmplifyService.instance.logout();
+    } else {
+      await MockService.instance.logout();
+    }
     state = const AuthState();
   }
 }

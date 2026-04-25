@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:printing/printing.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/metrics_provider.dart';
 import '../../providers/reports_provider.dart';
+import '../../services/amplify_service.dart';
+import '../../services/pdf_export_service.dart';
 
 class AdminDashboardScreen extends ConsumerWidget {
   const AdminDashboardScreen({super.key});
@@ -19,6 +23,14 @@ class AdminDashboardScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Dashboard de Impacto'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.auto_awesome),
+            tooltip: 'Análisis IA con Bedrock',
+            onPressed: () => showDialog(
+              context: context,
+              builder: (_) => const _AiInsightDialog(),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.picture_as_pdf),
             tooltip: 'Exportar reporte PDF',
@@ -544,25 +556,74 @@ class _MaterialFilterBar extends ConsumerWidget {
 
 // ── Export report dialog ──────────────────────────────────────────────────────
 
-class _ExportReportDialog extends StatefulWidget {
+enum _ExportPhase { idle, working, done, failed }
+
+class _ExportReportDialog extends ConsumerStatefulWidget {
   const _ExportReportDialog();
 
   @override
-  State<_ExportReportDialog> createState() => _ExportReportDialogState();
+  ConsumerState<_ExportReportDialog> createState() =>
+      _ExportReportDialogState();
 }
 
-class _ExportReportDialogState extends State<_ExportReportDialog> {
-  bool _generating = false;
+class _ExportReportDialogState extends ConsumerState<_ExportReportDialog> {
+  _ExportPhase _phase = _ExportPhase.idle;
+  String _step = '';
+  Uint8List? _pdfBytes;
+  String? _s3Url;
+  String? _errorMsg;
+  bool _urlCopied = false;
 
-  static const _logLines = [
-    '> Connecting to S3 bucket...',
-    '> Compiling impact metrics...',
-    '> Generating master_ecology_report.pdf',
-    '> Preparing AWS S3 Download...',
-  ];
+  Future<void> _runExport() async {
+    setState(() {
+      _phase = _ExportPhase.working;
+      _step = 'Compilando métricas de impacto...';
+    });
+
+    try {
+      final metrics = await ref.read(metricsProvider.future);
+      final reports =
+          ref.read(reportsNotifierProvider).valueOrNull ?? [];
+
+      setState(() => _step = 'Generando PDF...');
+
+      final result = await PdfExportService.instance.export(
+        metrics: metrics,
+        reports: reports,
+      );
+
+      setState(() {
+        _pdfBytes = result.bytes;
+        _s3Url = result.s3Url;
+        _phase = _ExportPhase.done;
+      });
+    } catch (e) {
+      setState(() {
+        _phase = _ExportPhase.failed;
+        _errorMsg = e.toString();
+      });
+    }
+  }
+
+  Future<void> _downloadLocally() async {
+    if (_pdfBytes == null) return;
+    await Printing.sharePdf(
+      bytes: _pdfBytes!,
+      filename: 'master_ecology_report.pdf',
+    );
+  }
+
+  Future<void> _copyUrl() async {
+    if (_s3Url == null) return;
+    await Clipboard.setData(ClipboardData(text: _s3Url!));
+    setState(() => _urlCopied = true);
+    await Future<void>.delayed(const Duration(seconds: 2));
+    if (mounted) setState(() => _urlCopied = false);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return AlertDialog(
       title: const Row(
         children: [
@@ -571,57 +632,341 @@ class _ExportReportDialogState extends State<_ExportReportDialog> {
           Text('Exportar Reporte PDF'),
         ],
       ),
-      content: _generating
-          ? Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const LinearProgressIndicator(),
-                const SizedBox(height: 16),
-                ..._logLines.map(
-                  (line) => Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Text(
-                      line,
-                      style: TextStyle(
-                        fontFamily: 'monospace',
-                        fontSize: 12,
-                        color: line.contains('S3 Download')
-                            ? AppColors.forestGreen
-                            : Colors.grey.shade700,
-                        fontWeight: line.contains('S3 Download')
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            )
-          : const Text(
+      content: SizedBox(
+        width: 420,
+        child: switch (_phase) {
+          _ExportPhase.idle => const Text(
               'Genera un PDF con el resumen de impacto ambiental '
               'para compartir con stakeholders y entidades de la ciudad.',
             ),
-      actions: _generating
-          ? [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cerrar'),
-              ),
-            ]
-          : [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancelar'),
-              ),
-              FilledButton.icon(
+          _ExportPhase.working => Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                LinearProgressIndicator(
+                  backgroundColor:
+                      AppColors.techOrange.withValues(alpha: 0.15),
+                  valueColor:
+                      const AlwaysStoppedAnimation(AppColors.techOrange),
+                ),
+                const SizedBox(height: 14),
+                const _LogLine('> Conectando con el servicio...', done: true),
+                _LogLine('> $_step', done: false),
+              ],
+            ),
+          _ExportPhase.done => Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  const Icon(Icons.check_circle,
+                      color: AppColors.forestGreen, size: 20),
+                  const SizedBox(width: 8),
+                  Text('PDF generado correctamente',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.bold)),
+                ]),
+                const SizedBox(height: 14),
+                if (_s3Url != null) ...[
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.forestGreen.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                          color: AppColors.forestGreen.withValues(alpha: 0.3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(children: [
+                          Icon(Icons.cloud_done,
+                              color: AppColors.forestGreen, size: 16),
+                          SizedBox(width: 6),
+                          Text('Subido a S3',
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.forestGreen)),
+                        ]),
+                        const SizedBox(height: 6),
+                        Text(
+                          _s3Url!.length > 60
+                              ? '${_s3Url!.substring(0, 60)}…'
+                              : _s3Url!,
+                          style: TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 10,
+                              color: Colors.grey.shade700),
+                        ),
+                        const SizedBox(height: 8),
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.forestGreen,
+                            side: const BorderSide(
+                                color: AppColors.forestGreen),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                          ),
+                          onPressed: _copyUrl,
+                          icon: Icon(
+                              _urlCopied
+                                  ? Icons.check
+                                  : Icons.copy,
+                              size: 14),
+                          label: Text(_urlCopied ? 'Copiado' : 'Copiar URL',
+                              style: const TextStyle(fontSize: 12)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.techOrange),
+                  onPressed: _downloadLocally,
+                  icon: const Icon(Icons.download, size: 16),
+                  label: const Text('Descargar PDF'),
+                ),
+              ],
+            ),
+          _ExportPhase.failed => Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Icon(Icons.error_outline,
+                      color: Colors.red.shade600, size: 20),
+                  const SizedBox(width: 8),
+                  Text('Error al exportar',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                          color: Colors.red.shade700,
+                          fontWeight: FontWeight.bold)),
+                ]),
+                const SizedBox(height: 8),
+                Text(
+                  _errorMsg ?? 'Error desconocido',
+                  style: TextStyle(
+                      fontSize: 12, color: Colors.grey.shade700),
+                ),
+              ],
+            ),
+        },
+      ),
+      actions: switch (_phase) {
+        _ExportPhase.idle => [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.techOrange),
+              onPressed: _runExport,
+              icon: const Icon(Icons.picture_as_pdf, size: 16),
+              label: const Text('Generar PDF'),
+            ),
+          ],
+        _ExportPhase.working => const [],
+        _ExportPhase.done || _ExportPhase.failed => [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cerrar'),
+            ),
+            if (_phase == _ExportPhase.failed)
+              FilledButton(
                 style: FilledButton.styleFrom(
                     backgroundColor: AppColors.techOrange),
-                onPressed: () => setState(() => _generating = true),
-                icon: const Icon(Icons.download, size: 16),
-                label: const Text('Generar PDF'),
+                onPressed: _runExport,
+                child: const Text('Reintentar'),
               ),
-            ],
+          ],
+      },
+    );
+  }
+}
+
+class _LogLine extends StatelessWidget {
+  final String text;
+  final bool done;
+  const _LogLine(this.text, {required this.done});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(children: [
+        if (done)
+          const Icon(Icons.check, size: 14, color: AppColors.forestGreen)
+        else
+          const SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        const SizedBox(width: 6),
+        Text(
+          text,
+          style: TextStyle(
+            fontFamily: 'monospace',
+            fontSize: 11,
+            color: done
+                ? AppColors.forestGreen
+                : Colors.grey.shade700,
+          ),
+        ),
+      ]),
+    );
+  }
+}
+
+// ── AI Insight Dialog (Bedrock executive analysis) ────────────────────────────
+
+enum _InsightPhase { idle, working, done, failed }
+
+class _AiInsightDialog extends ConsumerStatefulWidget {
+  const _AiInsightDialog();
+
+  @override
+  ConsumerState<_AiInsightDialog> createState() => _AiInsightDialogState();
+}
+
+class _AiInsightDialogState extends ConsumerState<_AiInsightDialog> {
+  _InsightPhase _phase = _InsightPhase.idle;
+  String _insight = '';
+  String? _errorMsg;
+
+  Future<void> _generate() async {
+    setState(() => _phase = _InsightPhase.working);
+    try {
+      final metrics = await ref.read(metricsProvider.future);
+      final text = await AmplifyService.instance.generateEcoInsight(metrics);
+      setState(() {
+        _insight = text;
+        _phase = _InsightPhase.done;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMsg = e.toString();
+        _phase = _InsightPhase.failed;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AlertDialog(
+      title: const Row(
+        children: [
+          Icon(Icons.auto_awesome, color: AppColors.techOrange),
+          SizedBox(width: 10),
+          Text('Análisis IA de Impacto'),
+        ],
+      ),
+      content: SizedBox(
+        width: 460,
+        child: switch (_phase) {
+          _InsightPhase.idle => const Text(
+              'Genera un análisis ejecutivo en español con Amazon Bedrock '
+              '(Claude Haiku) basado en las métricas actuales de la plataforma.',
+            ),
+          _InsightPhase.working => Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                LinearProgressIndicator(
+                  backgroundColor:
+                      AppColors.techOrange.withValues(alpha: 0.15),
+                  valueColor:
+                      const AlwaysStoppedAnimation(AppColors.techOrange),
+                ),
+                const SizedBox(height: 14),
+                const _LogLine('> Leyendo métricas de impacto…', done: true),
+                const _LogLine('> Invocando Amazon Bedrock (Claude Haiku)…',
+                    done: false),
+              ],
+            ),
+          _InsightPhase.done => Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  const Icon(Icons.auto_awesome,
+                      color: AppColors.techOrange, size: 18),
+                  const SizedBox(width: 8),
+                  Text('Generado por Amazon Bedrock',
+                      style: theme.textTheme.labelSmall
+                          ?.copyWith(color: AppColors.techOrange)),
+                ]),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.forestGreen.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                        color: AppColors.forestGreen.withValues(alpha: 0.2)),
+                  ),
+                  child: Text(
+                    _insight,
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(height: 1.55),
+                  ),
+                ),
+              ],
+            ),
+          _InsightPhase.failed => Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Icon(Icons.error_outline,
+                      color: Colors.red.shade600, size: 20),
+                  const SizedBox(width: 8),
+                  Text('Error al generar análisis',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                          color: Colors.red.shade700,
+                          fontWeight: FontWeight.bold)),
+                ]),
+                const SizedBox(height: 8),
+                Text(_errorMsg ?? 'Error desconocido',
+                    style: TextStyle(
+                        fontSize: 12, color: Colors.grey.shade700)),
+              ],
+            ),
+        },
+      ),
+      actions: switch (_phase) {
+        _InsightPhase.idle => [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.techOrange),
+              onPressed: _generate,
+              icon: const Icon(Icons.auto_awesome, size: 16),
+              label: const Text('Generar con IA'),
+            ),
+          ],
+        _InsightPhase.working => const [],
+        _InsightPhase.done || _InsightPhase.failed => [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cerrar'),
+            ),
+            if (_phase == _InsightPhase.failed)
+              FilledButton(
+                style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.techOrange),
+                onPressed: _generate,
+                child: const Text('Reintentar'),
+              ),
+          ],
+      },
     );
   }
 }

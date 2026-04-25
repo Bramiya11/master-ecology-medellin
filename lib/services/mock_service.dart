@@ -1,6 +1,7 @@
 import 'package:uuid/uuid.dart';
 
 import '../core/constants/app_constants.dart';
+import '../models/metrics_model.dart';
 import '../models/report_model.dart';
 import '../models/user_model.dart';
 
@@ -50,6 +51,8 @@ class MockService {
       timestamp: DateTime(2024, 11, 20, 8, 30),
       reporterUserId: 'u-citizen-01',
       description: 'Acumulación de bolsas plásticas en la esquina',
+      aiSeverity: 'CRÍTICO',
+      aiRecommendation: 'Recolección urgente en menos de 24 horas',
     ),
     Report(
       id: 'r-002',
@@ -81,6 +84,8 @@ class MockService {
       timestamp: DateTime(2024, 11, 20, 7, 45),
       reporterUserId: 'u-citizen-01',
       description: 'Residuos orgánicos expuestos en vía pública',
+      aiSeverity: 'CRÍTICO',
+      aiRecommendation: 'Riesgo sanitario activo, atención inmediata requerida',
     ),
     Report(
       id: 'r-005',
@@ -90,6 +95,8 @@ class MockService {
       status: ReportStatus.pending,
       timestamp: DateTime(2024, 11, 20, 10, 0),
       reporterUserId: 'u-citizen-01',
+      aiSeverity: 'MODERADO',
+      aiRecommendation: 'Programar recolección en próximas 48 horas',
     ),
     Report(
       id: 'r-006',
@@ -318,6 +325,8 @@ class MockService {
     required ReportLocation location,
     String? photoUrl,
     String? description,
+    String? aiSeverity,
+    String? aiRecommendation,
   }) async {
     await Future.delayed(_kFakeDelay);
     final report = Report(
@@ -330,6 +339,8 @@ class MockService {
       timestamp: DateTime.now(),
       reporterUserId: _currentUser?.id ?? 'anonymous',
       description: description,
+      aiSeverity: aiSeverity,
+      aiRecommendation: aiRecommendation,
     );
     _reports.add(report);
     return report;
@@ -408,27 +419,3 @@ class MockService {
   }
 }
 
-class ImpactMetrics {
-  final int totalReports;
-  final int completedReports;
-  final double tonnesDeviated;
-  final double co2SavedKg;
-  final double routeHoursOptimized;
-  final int criticalPointsPending;
-  final Map<String, int> reportsByMaterial;
-  final Map<String, int> reportsByStatus;
-
-  const ImpactMetrics({
-    required this.totalReports,
-    required this.completedReports,
-    required this.tonnesDeviated,
-    required this.co2SavedKg,
-    required this.routeHoursOptimized,
-    required this.criticalPointsPending,
-    required this.reportsByMaterial,
-    required this.reportsByStatus,
-  });
-
-  double get completionRate =>
-      totalReports == 0 ? 0 : completedReports / totalReports;
-}
