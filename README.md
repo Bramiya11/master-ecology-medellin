@@ -162,6 +162,13 @@ The `build/web` output is deployed automatically via **AWS Amplify** on every pu
 
 ---
 
+## Live demo
+
+Demo already on the internet via Amplify!
+https://dev.d2sqam9usg42ou.amplifyapp.com/#/login 
+
+---
+
 ## Social Impact
 
 Master Ecology is not only a software project — it is an argument that technology should serve the people who are hardest to see.
